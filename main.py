@@ -44,23 +44,22 @@ async def play_url(ctx, url):
 
 @client.command(name='play', aliases=['PLAY'])
 async def play(ctx, url):
-    try:
-        global voice
-        voice = await ctx.message.author.voice.channel.connect()
-    except:
-        pass
-    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
-    if not voice.is_playing():
-        song_there = os.path.isfile("muzyka.mp3")
-        try:
-            if song_there:
-                os.remove("muzyka.mp3")
-        except PermissionError:
-            return
+    global voice
+    voice = await ctx.message.author.voice.channel.connect()
+    if not voice.is_connected():
+        await voice.connect()
+    else:
+        if not voice.is_playing():
+            song_there = os.path.isfile("muzyka.mp3")
+            try:
+                if song_there:
+                    os.remove("muzyka.mp3")
+            except PermissionError:
+                return
 
-        await play_url(ctx, url)
-    elif voice and voice.is_playing():
-        await ctx.send("Muzyka już gra, jeśli chcesz ją zakolejkować to wpisz '-queue'")
+            await play_url(ctx, url)
+        elif voice and voice.is_playing():
+            await ctx.send("Muzyka już gra, jeśli chcesz ją zakolejkować to wpisz '-queue'")
 
 
 async def queue(ctx):
