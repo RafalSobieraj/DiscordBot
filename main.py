@@ -1,9 +1,6 @@
 import asyncio
 import discord
 import os
-import urllib.request
-
-from lxml import etree
 from discord.ext import commands
 import youtube_dl
 from youtube_dl import YoutubeDL
