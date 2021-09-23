@@ -49,6 +49,7 @@ async def play(ctx, url):
         voice = await ctx.message.author.voice.channel.connect()
     except:
         pass
+    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
     if not voice.is_playing():
         song_there = os.path.isfile("muzyka.mp3")
         try:
