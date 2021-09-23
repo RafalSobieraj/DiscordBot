@@ -8,6 +8,7 @@ from discord.ext import commands
 import youtube_dl
 from youtube_dl import YoutubeDL
 
+Client = discord.Client
 client = commands.Bot(command_prefix="-")
 
 ydl_opts = {
@@ -21,6 +22,11 @@ ydl_opts = {
 }
 ffmpeg_opts = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'}
 queue_song = {}
+
+
+@client.event
+async def on_ready():
+    print("Bot został załadowany!")
 
 
 async def play_url(ctx, url):
@@ -146,4 +152,4 @@ async def add_to_queue(ctx, url):
     pass
 
 
-client.run(os.getenv('DISC_TOKEN'))
+client.run(os.getenv("DISC_TOKEN"))
