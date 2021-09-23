@@ -152,4 +152,4 @@ async def add_to_queue(ctx, url):
     pass
 
 
-client.run(os.environ['TOKEN'])
+client.run('ODg3NzQzOTI3ODkxOTQzNDQ0.YUIl9Q.5_CYIZCh-Ntdjr5vmsRBCVRpWZk')
