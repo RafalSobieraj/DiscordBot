@@ -45,7 +45,7 @@ async def play_url(ctx, url):
 @client.command(name='play', aliases=['PLAY'])
 async def play(ctx, url):
     global voice
-    voice = await ctx.message.author.voice.channel.connect()
+    voice = await ctx.message.author.voice.channel
     if not voice.is_connected():
         await voice.connect()
     else:
