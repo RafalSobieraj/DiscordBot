@@ -44,6 +44,7 @@ async def play_url(ctx, url):
 
 @client.command(name='play', aliases=['PLAY'])
 async def play(ctx, url):
+    global voice
     user = ctx.message.author
     voiceChannel = user.voice.channel
     voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
