@@ -34,6 +34,8 @@ async def play_url(ctx, url):
 
     url = str(url)
     voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
+    if voice.is_playing():
+        await ctx.send("Muzyka już gra, jeśli chcesz ją zakolejkować to wpisz '-queue'")
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
     for file in os.listdir("./"):
@@ -61,10 +63,7 @@ async def play(ctx, url):
     except PermissionError:
         return
 
-    if voice.is_playing():
-        await ctx.send("Muzyka już gra, jeśli chcesz ją zakolejkować to wpisz '-queue'")
-    else:
-        await play_url(ctx, url)
+    await play_url(ctx, url)
     await asyncio.sleep(60)
     while voice.is_playing():
         break
