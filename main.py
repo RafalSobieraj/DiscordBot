@@ -51,6 +51,7 @@ async def play(ctx, url):
     if voice == None:
         await voiceChannel.connect()
     else:
+        voice.move_to(voiceChannel)
         if not voice.is_playing():
             song_there = os.path.isfile("muzyka.mp3")
             try:
@@ -85,14 +86,6 @@ async def pause(ctx):
         voice.pause()
     else:
         await ctx.send("Nic na razie nie gra.")
-
-@client.command(name='dc', aliases=['DC'])
-async def disconnect(ctx):
-    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
-    if not voice.is_playing():
-        voice.disconnect()
-    else:
-        await ctx.send("Nie można rozłączyć: muzyka nadal gra.")
 
 async def loading(ctx):
     await ctx.send("Wczytywanie muzyki...")
