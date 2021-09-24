@@ -44,19 +44,28 @@ async def play_url(ctx, url):
 
 @client.command(name='play', aliases=['PLAY'])
 async def play(ctx, url):
-    global voice
-    voice = await ctx.message.author.voice.channel.connect()
-    if not voice.is_playing():
-        song_there = os.path.isfile("muzyka.mp3")
-        try:
-            if song_there:
-                os.remove("muzyka.mp3")
-        except PermissionError:
-            return
+    user = ctx.message.author
+    voiceChannel = user.voice.channel
+    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
+    if voice == None:
+        await voiceChannel.connect()
+    else:
+        if not voice.is_playing():
+            song_there = os.path.isfile("muzyka.mp3")
+            try:
+                if song_there:
+                    os.remove("muzyka.mp3")
+            except PermissionError:
+                return
 
-        await play_url(ctx, url)
-    elif voice and voice.is_playing():
-        await ctx.send("Muzyka już gra, jeśli chcesz ją zakolejkować to wpisz '-queue'")
+            await play_url(ctx, url)
+        elif voice and voice.is_playing():
+            await ctx.send("Muzyka już gra, jeśli chcesz ją zakolejkować to wpisz '-queue'")
+    await asyncio.sleep(60)
+    while voice.is_playing():
+        break
+    else:
+        await voice.disconnect()
 
 
 async def queue(ctx):
@@ -76,6 +85,13 @@ async def pause(ctx):
     else:
         await ctx.send("Nic na razie nie gra.")
 
+@client.command(name='dc', aliases=['DC'])
+async def disconnect(ctx):
+    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
+    if not voice.is_playing():
+        voice.disconnect()
+    else:
+        await ctx.send("Nie można rozłączyć: muzyka nadal gra.")
 
 async def loading(ctx):
     await ctx.send("Wczytywanie muzyki...")
