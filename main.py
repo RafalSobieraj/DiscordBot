@@ -62,7 +62,7 @@ async def play(ctx, url):
         return
 
     await play_url(ctx, url)
-    if voice and voice.is_playing():
+    if voice.is_playing():
         await ctx.send("Muzyka już gra, jeśli chcesz ją zakolejkować to wpisz '-queue'")
     await asyncio.sleep(60)
     while voice.is_playing():
