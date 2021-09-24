@@ -61,9 +61,10 @@ async def play(ctx, url):
     except PermissionError:
         return
 
-    await play_url(ctx, url)
     if voice.is_playing():
         await ctx.send("Muzyka już gra, jeśli chcesz ją zakolejkować to wpisz '-queue'")
+    else:
+        await play_url(ctx, url)
     await asyncio.sleep(60)
     while voice.is_playing():
         break
