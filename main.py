@@ -33,6 +33,7 @@ async def play_url(ctx, url):
         pass
 
     url = str(url)
+    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
     for file in os.listdir("./"):
