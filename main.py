@@ -53,16 +53,15 @@ async def play(ctx, url):
         await voiceChannel.connect()
     else:
         await voice.move_to(channel)
-    if not voice.is_playing():
-        song_there = os.path.isfile("muzyka.mp3")
-        try:
-            if song_there:
-                os.remove("muzyka.mp3")
-        except PermissionError:
-            return
+    song_there = os.path.isfile("muzyka.mp3")
+    try:
+        if song_there:
+            os.remove("muzyka.mp3")
+    except PermissionError:
+        return
 
-        await play_url(ctx, url)
-    elif voice and voice.is_playing():
+    await play_url(ctx, url)
+    if voice and voice.is_playing():
         await ctx.send("Muzyka już gra, jeśli chcesz ją zakolejkować to wpisz '-queue'")
     await asyncio.sleep(60)
     while voice.is_playing():
