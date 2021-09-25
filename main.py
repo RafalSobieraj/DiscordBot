@@ -11,6 +11,10 @@ client = commands.Bot(command_prefix="-")
 ydl_opts = {
     'format': 'bestaudio/best',
     'default search': 'ytsearch',
+    "restrictfilenames": True,
+    "ignoreerrors": True,
+    "no_warnings": True,
+    "cookiefile": "youtube.com_cookies.txt",
     'postprocessors': [{
         'key': 'FFmpegExtractAudio',
         'preferredcodec': 'mp3',
