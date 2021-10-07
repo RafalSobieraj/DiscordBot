@@ -1,6 +1,7 @@
 import asyncio
 import discord
 import os
+from discord import FFmpegPCMAudio
 from discord.ext import commands
 import youtube_dl
 from youtube_dl import YoutubeDL
@@ -11,18 +12,19 @@ client = commands.Bot(command_prefix="-")
 ydl_opts = {
     'format': 'bestaudio/best',
     'default search': 'ytsearch',
-    "restrictfilenames": True,
-    "ignoreerrors": True,
-    "no_warnings": True,
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'restrictfilenames': True,
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'no_warnings': True,
     "cookiefile": "youtube.com_cookies.txt",
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'mp3',
-        'preferredquality': '192'
-    }]
+    'default_search': 'auto',
+    'source_address': '0.0.0.0'
 }
-ffmpeg_opts = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'}
-queue_song = {}
+ffmpeg_opts = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 
 
 @client.event
@@ -30,58 +32,72 @@ async def on_ready():
     print("Bot został załadowany!")
 
 
-async def play_url(ctx, url):
-    try:
-        os.remove("muzyka.mp3")
-    except:
-        pass
+queue_song = {}
+ytdl = youtube_dl.YoutubeDL(ydl_opts)
 
-    url = str(url)
-    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
-    if voice.is_playing():
-        await ctx.send("Muzyka już gra, jeśli chcesz ją zakolejkować to wpisz '-queue'")
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
-    for file in os.listdir("./"):
-        if file.endswith(".mp3"):
-            os.rename(file, "muzyka.mp3")
-    voice.play(discord.FFmpegPCMAudio("muzyka.mp3"), after=lambda e: asyncio.run(queue(ctx)))
-    voice.source = discord.PCMVolumeTransformer(voice.source)
+
+class YTDLSource(discord.PCMVolumeTransformer):
+    def __init__(self, source, data, volume=0.5):
+        super().__init__(source, volume)
+
+        self.data = data
+
+        self.title = data.get('title')
+        self.url = data.get('url')
+
+    @classmethod
+    async def from_url(cls, url, loop=None, stream=False):
+        loop = loop or asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+
+        if 'entries' in data:
+            # take first item from a playlist
+            data = data['entries'][0]
+
+        filename = data['url'] if stream else ytdl.prepare_filename(data)
+        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_opts), data=data)
+
+
+@client.command(name='queue', aliases=['QUEUE'])
+async def queue(ctx, url):
+    global queue_song
+    await ctx.send("Dodano do kolejki")
+    info_dict = YoutubeDL(ydl_opts).extract_info(url, download=False)
+    if info_dict.get('title', None) in queue_song:
+        queue_song[str(info_dict['title'])] = url
+    else:
+        queue_song[str(info_dict['title'])] = url
+
+
+async def play_song(ctx, url):
+    player = await YTDLSource.from_url(url, stream=True)
+    async with ctx.typing():
+        ctx.voice_client.play(
+            player,
+            after=lambda e:
+            print('Player error: %s' % e) if e else asyncio.run(play_from_queue(ctx)))
+    await ctx.send("Teraz gramy: {}".format(player.title))
 
 
 @client.command(name='play', aliases=['PLAY'])
 async def play(ctx, url):
-    global voice
-    user = ctx.message.author
-    voiceChannel = user.voice.channel
-    channel = ctx.author.voice.channel
-    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
-    if voice == None:
-        await voiceChannel.connect()
+    voiceChannel = ctx.author.voice.channel
+    if ctx.voice_client is None:
+        voice = await voiceChannel.connect()
     else:
-        await voice.move_to(channel)
-    song_there = os.path.isfile("muzyka.mp3")
-    try:
-        if song_there:
-            os.remove("muzyka.mp3")
-    except PermissionError:
-        return
-
-    await play_url(ctx, url)
-    await asyncio.sleep(60)
-    while voice.is_playing():
-        break
+        await ctx.voice_client.move_to(voiceChannel)
+        voice = ctx.voice_client
+    async with ctx.typing():
+        player = await YTDLSource.from_url(url, loop=client.loop, stream=True)
+        ctx.voice_client.play(
+            player,
+            after=lambda e:
+            print('Player error: %s' % e) if e else asyncio.run(play_from_queue(ctx)))
+    await ctx.send("Teraz gramy: {}".format(player.title))
+    while ctx.voice_client.is_playing:
+        await asyncio.sleep(60)
     else:
-        await voice.disconnect()
-
-
-async def queue(ctx):
-    global queue_song
-    if len(queue_song) != 0:
-        keys = list(queue_song.keys())
-        values = list(queue_song.values())
-        await play_url(ctx, str(values[0]))
-        del queue_song[keys[0]]
+        await ctx.voice_client.disconnect()
 
 
 @client.command(name='pause', aliases=['PAUSE'])
@@ -91,6 +107,7 @@ async def pause(ctx):
         voice.pause()
     else:
         await ctx.send("Nic na razie nie gra.")
+
 
 async def loading(ctx):
     await ctx.send("Wczytywanie muzyki...")
@@ -146,12 +163,11 @@ async def check(ctx):
         for i in range(len(keys)):
             info_dict = YoutubeDL(ydl_opts).extract_info(values[i], download=False)
             print(info_dict)
-            message = "**" + str(i + 1) + ".** " + str(keys[i]) + ")"
+            message = "**" + str(i + 1) + ".** " + str(keys[i])
             await ctx.send(message)
 
 
-@client.command(name='queue', aliases=['QUEUE'])
-async def add_to_queue(ctx, url):
+async def add_to_queue(ctx, url=None):
     await ctx.send("Dodano do kolejki!")
     info_dict = YoutubeDL(ydl_opts).extract_info(url, download=False)
     if info_dict.get('title', None) in queue_song:
@@ -161,4 +177,13 @@ async def add_to_queue(ctx, url):
     pass
 
 
-client.run(os.environ['TOKEN'])
+async def play_from_queue(ctx):
+    global queue_song
+    if len(queue_song) != 0:
+        keys = list(queue_song.keys())
+        values = list(queue_song.values())
+        await play_song(ctx, str(values[0]))
+        del queue_song[keys[0]]
+
+
+client.run('ODg3NzQzOTI3ODkxOTQzNDQ0.YUIl9Q.nzwBuxRiqIhgN6zZJVxC6YjQW04')
