@@ -186,4 +186,4 @@ async def play_from_queue(ctx):
         del queue_song[keys[0]]
 
 
-client.run('ODg3NzQzOTI3ODkxOTQzNDQ0.YUIl9Q.nzwBuxRiqIhgN6zZJVxC6YjQW04')
+client.run(os.environ['TOKEN'])
