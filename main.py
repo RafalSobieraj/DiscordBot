@@ -1,4 +1,7 @@
 import asyncio
+import re
+from urllib import request, parse
+
 import discord
 import os
 from discord import FFmpegPCMAudio
@@ -51,18 +54,22 @@ class YTDLSource(discord.PCMVolumeTransformer):
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
         if 'entries' in data:
-            # take first item from a playlist
             data = data['entries'][0]
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_opts), data=data)
 
 
-@client.command(name='queue', aliases=['QUEUE'])
 async def queue(ctx, url):
     global queue_song
     await ctx.send("Dodano do kolejki")
-    info_dict = YoutubeDL(ydl_opts).extract_info(url, download=False)
+    urlString = parse.urlencode({'search_query': url})
+    html_content = request.urlopen('http://www.youtube.com/results?' + urlString)
+    search_content = html_content.read().decode()
+    search_results = re.findall(r'\/watch\?v=\w+', search_content)
+    result = search_results[0]
+    urlFound = str('http://www.youtube.com' + result)
+    info_dict = YoutubeDL(ydl_opts).extract_info(urlFound, download=False)
     if info_dict.get('title', None) in queue_song:
         queue_song[str(info_dict['title'])] = url
     else:
@@ -88,11 +95,14 @@ async def play(ctx, url):
         await ctx.voice_client.move_to(voiceChannel)
         voice = ctx.voice_client
     async with ctx.typing():
-        player = await YTDLSource.from_url(url, loop=client.loop, stream=True)
-        ctx.voice_client.play(
-            player,
-            after=lambda e:
-            print('Player error: %s' % e) if e else asyncio.run(play_from_queue(ctx)))
+        if ctx.voice_client.is_playing():
+            await queue(ctx, url)
+        else:
+            player = await YTDLSource.from_url(url, loop=client.loop, stream=True)
+            ctx.voice_client.play(
+                player,
+                after=lambda e:
+                print('Player error: %s' % e) if e else asyncio.run(play_from_queue(ctx)))
     await ctx.send("Teraz gramy: {}".format(player.title))
     while ctx.voice_client.is_playing:
         await asyncio.sleep(60)
