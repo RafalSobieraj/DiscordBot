@@ -78,12 +78,10 @@ async def queue(ctx, url):
 
 async def play_song(ctx, url):
     player = await YTDLSource.from_url(url, stream=True)
-    async with ctx.typing():
-        ctx.voice_client.play(
-            player,
-            after=lambda e:
-            print('Player error: %s' % e) if e else asyncio.run(play_from_queue(ctx)))
-    await ctx.send("Teraz gramy: {}".format(player.title))
+    ctx.voice_client.play(
+        player,
+        after=lambda e:
+        print('Player error: %s' % e) if e else asyncio.run(play_from_queue(ctx)))
 
 
 @client.command(name='play', aliases=['PLAY'])
@@ -103,7 +101,7 @@ async def play(ctx, url):
                 player,
                 after=lambda e:
                 print('Player error: %s' % e) if e else asyncio.run(play_from_queue(ctx)))
-    await ctx.send("Teraz gramy: {}".format(player.title))
+            await ctx.send("Teraz gramy: {}".format(player.title))
     while ctx.voice_client.is_playing:
         await asyncio.sleep(60)
     else:
