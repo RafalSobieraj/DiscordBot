@@ -93,11 +93,14 @@ async def play(ctx, url):
         await ctx.voice_client.move_to(voiceChannel)
         voice = ctx.voice_client
     async with ctx.typing():
-        player = await YTDLSource.from_url(url, loop=client.loop, stream=True)
-        ctx.voice_client.play(
-            player,
-            after=lambda e:
-            print('Player error: %s' % e) if e else asyncio.run(play_from_queue(ctx)))
+        if ctx.voice_client.is_playing():
+            await queue(ctx, url)
+        else:
+            player = await YTDLSource.from_url(url, loop=client.loop, stream=True)
+            ctx.voice_client.play(
+                player,
+                after=lambda e:
+                print('Player error: %s' % e) if e else asyncio.run(play_from_queue(ctx)))
     await ctx.send("Teraz gramy: {}".format(player.title))
     while ctx.voice_client.is_playing:
         await asyncio.sleep(60)
