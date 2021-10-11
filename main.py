@@ -58,11 +58,16 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_opts), data=data)
 
 
-@client.command(name='queue', aliases=['QUEUE'])
 async def queue(ctx, url):
     global queue_song
     await ctx.send("Dodano do kolejki")
-    info_dict = YoutubeDL(ydl_opts).extract_info(url, download=False)
+    urlString = parse.urlencode({'search_query': url})
+    html_content = request.urlopen('http://www.youtube.com/results?' + urlString)
+    search_content = html_content.read().decode()
+    search_results = re.findall(r'\/watch\?v=\w+', search_content)
+    result = search_results[0]
+    urlFound = str('http://www.youtube.com' + result)
+    info_dict = YoutubeDL(ydl_opts).extract_info(urlFound, download=False)
     if info_dict.get('title', None) in queue_song:
         queue_song[str(info_dict['title'])] = url
     else:
